@@ -18,61 +18,14 @@
 import sys
 import time
 import argparse
-
+import json
 import tabulate
 
-import vyos.keepalived
 import vyos.util
 
+from vyos.ifconfig.vrrp import VRRP
+from vyos.ifconfig.vrrp import VRRPError
 
-def print_summary():
-    try:
-        vyos.keepalived.force_json_dump()
-        # Wait for keepalived to produce the data
-        # Replace with inotify or similar if it proves problematic
-        time.sleep(0.2)
-        json_data = vyos.keepalived.get_json_data()
-    except:
-        print("VRRP information is not available")
-
-    groups = []
-    for group in json_data:
-        data = group["data"]
-
-        name = data["iname"]
-
-        ltrans_timestamp = float(data["last_transition"])
-        ltrans_time = vyos.util.seconds_to_human(int(time.time() - ltrans_timestamp))
-
-        interface = data["ifp_ifname"]
-        vrid = data["vrid"]
-
-        state = vyos.keepalived.decode_state(data["state"])
-
-        row = [name, interface, vrid, state, ltrans_time]
-        groups.append(row)
-
-    headers = ["Name", "Interface", "VRID", "State", "Last Transition"]
-    output = tabulate.tabulate(groups, headers)
-    print(output)
-
-def print_statistics():
-    try:
-        vyos.keepalived.force_stats_dump()
-        time.sleep(0.2)
-        output = vyos.keepalived.get_statistics()
-        print(output)
-    except:
-        print("VRRP statistics are not available")
-
-def print_state_data():
-    try:
-        vyos.keepalived.force_state_data_dump()
-        time.sleep(0.2)
-        output = vyos.keepalived.get_state_data()
-        print(output)
-    except:
-        print("VRRP information is not available")
 
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
@@ -83,16 +36,16 @@ group.add_argument("-d", "--data", action="store_true", help="Print detailed VRR
 args = parser.parse_args()
 
 # Exit early if VRRP is dead or not configured
-if not vyos.keepalived.vrrp_running():
-    print("VRRP is not running")
+if not VRRP.is_running():
+    print('VRRP is not running')
     sys.exit(0)
 
 if args.summary:
-    print_summary()
+    print(VRRP.format(VRRP.collect('json')))
 elif args.statistics:
-    print_statistics()
+    print(VRRP.collect('stats'))
 elif args.data:
-    print_state_data()
+    print(VRRP.collect('state'))
 else:
     parser.print_help()
     sys.exit(1)

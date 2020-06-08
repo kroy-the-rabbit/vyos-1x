@@ -21,10 +21,13 @@
 
 
 import os
-import sys
 import argparse
 
-import vyos.config
+from sys import exit
+from vyos.config import Config
+from vyos.util import call
+
+PDNS_CMD='/usr/bin/rec_control --socket-dir=/run/powerdns'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-a", "--all", action="store_true", help="Reset all cache")
@@ -34,16 +37,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Do nothing if service is not configured
-    c = vyos.config.Config()
-    if not c.exists_effective('service dns forwarding'):
+    c = Config()
+    if not c.exists_effective(['service', 'dns', 'forwarding']):
         print("DNS forwarding is not configured")
-        sys.exit(0)
+        exit(0)
 
     if args.all:
-        os.system("rec_control wipe-cache \'.$\'")
-        sys.exit(1)
+        call(f"{PDNS_CMD} wipe-cache \'.$\'")
+        exit(0)
+
     elif args.domain:
-        os.system("rec_control wipe-cache \'{0}$\'".format(args.domain))
+        call(f"{PDNS_CMD} wipe-cache \'{0}$\'".format(args.domain))
+
     else:
         parser.print_help()
-        sys.exit(1)
+        exit(1)

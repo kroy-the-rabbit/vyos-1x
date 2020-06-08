@@ -10,7 +10,7 @@
 # See the GNU Lesser General Public License for more details.
 #
 # You should have received a copy of the GNU Lesser General Public License along with this library;
-# if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA 
+# if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 import re
 import json
@@ -18,57 +18,16 @@ import json
 from ctypes import cdll, c_char_p, c_void_p, c_int
 
 
-def strip_comments(s):
-    """ Split a config string into the config section and the trailing comments """
-    INITIAL = 0
-    IN_COMMENT = 1
+def escape_backslash(string: str) -> str:
+    """Escape single backslashes in string that are not in escape sequence"""
+    p = re.compile(r'(?<!\\)[\\](?!b|f|n|r|t|\\[^bfnrt])')
+    result = p.sub(r'\\\\', string)
+    return result
 
-    i = len(s) - 1
-    state = INITIAL
-
-    config_end = 0
-
-    # Find the first character of the comments section at the end,
-    # if it exists
-    while (i >= 0):
-        c = s[i]
-
-        if (state == INITIAL) and re.match(r'\s', c):
-            # Ignore whitespace
-            if (i != 0):
-                i -= 1
-            else:
-                config_end = 0
-                break
-        elif (state == INITIAL) and (c == '/'):
-            # A comment begins, or it's a stray slash
-            try:
-                if (s[i-1] == '*'):
-                    state = IN_COMMENT
-                    i -= 2
-                else:
-                    raise ValueError("Invalid syntax")
-            except:
-                raise ValueError("Invalid syntax")
-        elif (state == INITIAL) and (c == '}'):
-            # We are not inside a comment, that's the end of the last node
-            config_end = i + 1
-            break
-        elif (state == IN_COMMENT) and (c == '*'):
-            # A comment ends here
-            try:
-                if (s[i-1] == '/'):
-                    state = INITIAL
-                    i -= 2
-            except:
-                raise ValueError("Invalid syntax")
-        elif (state == IN_COMMENT) and (c != '*'):
-            # Ignore everything inside comments, including braces
-            i -= 1
-        else:
-            raise ValueError("Invalid syntax")
-
-    return (s[0:config_end], s[config_end+1:])
+def extract_version(s):
+    """ Extract the version string from the config string """
+    t = re.split('(^//)', s, maxsplit=1, flags=re.MULTILINE)
+    return (s, ''.join(t[1:]))
 
 def check_path(path):
     # Necessary type checking
@@ -92,6 +51,10 @@ class ConfigTree(object):
         self.__from_string.argtypes = [c_char_p]
         self.__from_string.restype = c_void_p
 
+        self.__get_error = self.__lib.get_error
+        self.__get_error.argtypes = []
+        self.__get_error.restype = c_char_p
+
         self.__to_string = self.__lib.to_string
         self.__to_string.argtypes = [c_void_p]
         self.__to_string.restype = c_char_p
@@ -99,6 +62,14 @@ class ConfigTree(object):
         self.__to_commands = self.__lib.to_commands
         self.__to_commands.argtypes = [c_void_p]
         self.__to_commands.restype = c_char_p
+
+        self.__to_json = self.__lib.to_json
+        self.__to_json.argtypes = [c_void_p]
+        self.__to_json.restype = c_char_p
+
+        self.__to_json_ast = self.__lib.to_json_ast
+        self.__to_json_ast.argtypes = [c_void_p]
+        self.__to_json_ast.restype = c_char_p
 
         self.__set_add_value = self.__lib.set_add_value
         self.__set_add_value.argtypes = [c_void_p, c_char_p, c_char_p]
@@ -111,6 +82,14 @@ class ConfigTree(object):
         self.__delete = self.__lib.delete_node
         self.__delete.argtypes = [c_void_p, c_char_p]
         self.__delete.restype = c_int
+
+        self.__rename = self.__lib.rename_node
+        self.__rename.argtypes = [c_void_p, c_char_p, c_char_p]
+        self.__rename.restype = c_int
+
+        self.__copy = self.__lib.copy_node
+        self.__copy.argtypes = [c_void_p, c_char_p, c_char_p]
+        self.__copy.restype = c_int
 
         self.__set_replace_value = self.__lib.set_replace_value
         self.__set_replace_value.argtypes = [c_void_p, c_char_p, c_char_p]
@@ -147,13 +126,16 @@ class ConfigTree(object):
         self.__destroy = self.__lib.destroy
         self.__destroy.argtypes = [c_void_p]
 
-        config_section, comments_section = strip_comments(config_string)
+        config_section, version_section = extract_version(config_string)
+        config_section = escape_backslash(config_section)
         config = self.__from_string(config_section.encode())
         if config is None:
-            raise ValueError("Parse error")
+            msg = self.__get_error().decode()
+            raise ValueError("Failed to parse config: {0}".format(msg))
         else:
             self.__config = config
-            self.__comments = comments_section
+            self.__version = version_section
+
     def __del__(self):
         if self.__config is not None:
             self.__destroy(self.__config)
@@ -163,13 +145,27 @@ class ConfigTree(object):
 
     def to_string(self):
         config_string = self.__to_string(self.__config).decode()
-        config_string = "{0}\n{1}".format(config_string, self.__comments)
+        config_string = "{0}\n{1}".format(config_string, self.__version)
         return config_string
 
     def to_commands(self):
         return self.__to_commands(self.__config).decode()
 
+    def to_json(self):
+        return self.__to_json(self.__config).decode()
+
+    def to_json_ast(self):
+        return self.__to_json_ast(self.__config).decode()
+
     def set(self, path, value=None, replace=True):
+        """Set new entry in VyOS configuration.
+        path: configuration path e.g. 'system dns forwarding listen-address'
+        value: value to be added to node, e.g. '172.18.254.201'
+        replace: True: current occurance will be replaced
+                 False: new value will be appended to current occurances - use
+                 this for adding values to a multi node
+        """
+
         check_path(path)
         path_str = " ".join(map(str, path)).encode()
 
@@ -192,6 +188,32 @@ class ConfigTree(object):
         path_str = " ".join(map(str, path)).encode()
 
         self.__delete_value(self.__config, path_str, value.encode())
+
+    def rename(self, path, new_name):
+        check_path(path)
+        path_str = " ".join(map(str, path)).encode()
+        newname_str = new_name.encode()
+
+        # Check if a node with intended new name already exists
+        new_path = path[:-1] + [new_name]
+        if self.exists(new_path):
+            raise ConfigTreeError()
+        res = self.__rename(self.__config, path_str, newname_str)
+        if (res != 0):
+            raise ConfigTreeError("Path [{}] doesn't exist".format(path))
+
+    def copy(self, old_path, new_path):
+        check_path(old_path)
+        check_path(new_path)
+        oldpath_str = " ".join(map(str, old_path)).encode()
+        newpath_str = " ".join(map(str, new_path)).encode()
+
+        # Check if a node with intended new name already exists
+        if self.exists(new_path):
+            raise ConfigTreeError()
+        res = self.__copy(self.__config, oldpath_str, newpath_str)
+        if (res != 0):
+            raise ConfigTreeError("Path [{}] doesn't exist".format(old_path))
 
     def exists(self, path):
         check_path(path)

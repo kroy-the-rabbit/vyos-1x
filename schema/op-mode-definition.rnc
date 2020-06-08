@@ -24,7 +24,7 @@
 # Interface definition starts with interfaceDefinition tag that may contain node tags
 start = element interfaceDefinition
 {
-    node*
+    (node | tagNode)*
 }
 
 # node tag may contain node, leafNode, or tagNode tags
@@ -43,7 +43,7 @@ node = element node
 tagNode = element tagNode
 {
     nodeNameAttr,
-    (properties? & children & command?)
+    (properties? & children? & command?)
 }
 
 # Leaf nodes are terminal configuration nodes that can't have children,

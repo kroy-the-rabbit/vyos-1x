@@ -15,7 +15,38 @@
 
 
 directories = {
-  "data": "/usr/share/vyos/"
+  "data": "/usr/share/vyos/",
+  "conf_mode": "/usr/libexec/vyos/conf_mode",
+  "config": "/opt/vyatta/etc/config",
+  "current": "/opt/vyatta/etc/config-migrate/current",
+  "migrate": "/opt/vyatta/etc/config-migrate/migrate",
+  "log": "/var/log/vyatta",
+  "templates": "/usr/share/vyos/templates/"
 }
 
 cfg_group = 'vyattacfg'
+
+cfg_vintage = 'vyos'
+
+commit_lock = '/opt/vyatta/config/.lock'
+
+version_file = '/usr/share/vyos/component-versions.json'
+
+https_data = {
+    'listen_addresses' : { '*': ['_'] }
+}
+
+api_data = {
+    'listen_address' : '127.0.0.1',
+    'port' : '8080',
+    'strict' : 'false',
+    'debug' : 'false',
+    'api_keys' : [ {"id": "testapp", "key": "qwerty"} ]
+}
+
+vyos_cert_data = {
+    "conf": "/etc/nginx/snippets/vyos-cert.conf",
+    "crt": "/etc/ssl/certs/vyos-selfsigned.crt",
+    "key": "/etc/ssl/private/vyos-selfsign",
+    "lifetime": "365",
+}

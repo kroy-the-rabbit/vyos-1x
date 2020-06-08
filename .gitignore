@@ -27,6 +27,7 @@ wheels/
 .idea/
 .idea
 .idea/*
+*.iml
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -48,6 +49,7 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+cover
 
 # Translations
 *.mo
@@ -110,8 +112,27 @@ tests/templates/*
 
 # Debian packaging
 debian/files
+debian/tmp
+debian/debhelper-build-stamp
+debian/.debhelper/
 debian/vyos-1x
-debian/vyos-1x.*
+debian/vyos-1x-vmware
+debian/*.postinst.debhelper
+debian/*.prerm.debhelper
+debian/*.substvars
 
 # Sonar Cloud
 .scannerwork
+/.vs
+
+# SlickEdit
+*.vpj
+*.vpw
+*.vpwhist
+*.vtg
+
+# VIM
+*.swp
+
+# vyos-1x JSON version
+data/component-versions.json

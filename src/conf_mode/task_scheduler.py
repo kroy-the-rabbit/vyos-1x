@@ -23,6 +23,8 @@ import sys
 from vyos.config import Config
 from vyos import ConfigError
 
+from vyos import airbag
+airbag.enable()
 
 crontab_file = "/etc/cron.d/vyos-crontab"
 
@@ -49,7 +51,7 @@ def make_command(executable, arguments):
     if arguments:
         return("sg vyattacfg \"{0} {1}\"".format(executable, arguments))
     else:
-        return(executable)
+        return("sg vyattacfg \"{0}\"".format(executable))
 
 def get_config():
     conf = Config()

@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<interfaceDefinition>
+  <node name="show">
+    <children>
+      <node name="pppoe-server">
+        <properties>
+          <help>Show pppoe-server status</help>
+        </properties>
+        <children>
+          <leafNode name="sessions">
+            <properties>
+              <help>Show active PPPoE server sessions</help>
+            </properties>
+            <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="show sessions"</command>
+          </leafNode>
+          <leafNode name="statistics">
+            <properties>
+              <help>Show PPPoE server statistics</help>
+            </properties>
+            <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="show stat"</command>
+          </leafNode>
+          <leafNode name="interfaces">
+            <properties>
+              <help>Show interfaces where pppoe-server listens on</help>
+            </properties>
+            <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="pppoe interface show"</command>
+          </leafNode>
+        </children>
+      </node>
+    </children>
+  </node>
+  <node name="restart">
+    <children>
+      <leafNode name="pppoe-server">
+        <properties>
+          <help>Restarts pppoe-server</help>
+        </properties>
+        <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="restart"</command>
+      </leafNode>
+    </children>
+  </node>
+  <node name="reset">
+    <properties>
+      <help>Reset a service</help>
+    </properties>
+    <children>
+      <node name="pppoe-server">
+        <properties>
+          <help>Reset PPPoE server sessions</help>
+        </properties>
+        <children>
+          <leafNode name="all">
+            <properties>
+              <help>Terminate all pppoe-server users</help>
+            </properties>
+            <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="terminate all"</command>
+          </leafNode>
+          <tagNode name="interface">
+            <properties>
+              <help>Terminate a ppp interface</help>
+            </properties>
+            <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="terminate if $4"</command>
+          </tagNode>
+          <tagNode name="username">
+            <properties>
+              <help>Terminate specified users</help>
+            </properties>
+            <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="terminate username $4"</command>
+          </tagNode>
+        </children>
+      </node>
+    </children>
+  </node>
+  <node name="set">
+    <children>
+      <node name="pppoe-server">
+        <properties>
+          <help>Set PPPoE server maintenance mode</help>
+        </properties>
+        <children>
+          <node name="maintenance-mode">
+            <properties>
+              <help>Set PPPoE server maintenance mode</help>
+            </properties>
+            <children>
+              <leafNode name="enable">
+                <properties>
+                  <help>Deny new connections and stop to serve pppoe after disconnect last session</help>
+                </properties>
+                <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="shutdown soft"</command>
+              </leafNode>
+              <leafNode name="cancel">
+                <properties>
+                  <help>Cancel maintenance mode</help>
+                </properties>
+                <command>${vyos_op_scripts_dir}/ppp-server-ctrl.py --proto="pppoe" --action="shutdown cancel"</command>
+              </leafNode>
+            </children>
+          </node>
+        </children>
+      </node>
+    </children>
+  </node>
+</interfaceDefinition>
